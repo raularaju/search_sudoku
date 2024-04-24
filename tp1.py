@@ -35,16 +35,6 @@ def is_ok_to_put_num(grid, x , y, num):
          if i != x and j != y and grid[i][j] == num:
              return False
     return True
-def heuristic1(grid, i, j):
-    pos_values = 100
-    value = 1
-    if grid[i][j] == '0':
-        pos_values = 0
-        for num in numbers:
-            value = num
-            if is_ok_to_put_num(grid, i,j, num):
-                pos_values+=1
-    return value, pos_values
 
 def expand_state(state):
     grid = state[0]
@@ -59,6 +49,7 @@ def expand_state(state):
                             children.append(child_grid)
                     return children
     return children
+
 def is_solution(st):
     pass
         
@@ -79,6 +70,7 @@ def solve_bfs(grid, n_to_be_filled):
             q.put((child, st[-1] - 1))
     if q.empty():
         raise Exception("BFS could not find any solution")
+
 
 def solve_dfs(grid, n_to_be_filled, depth):
     stack = []
@@ -106,31 +98,39 @@ def solve_ids(grid, n_to_be_filled):
         sol = solve_dfs(grid, n_to_be_filled, depth)
     return sol
 
-def expand_state2(state):
-    grid = state[0]
+def heuristic1(grid, i, j):
+    pos_values = 100
+    values = []
+    if grid[i][j] == '0':
+        pos_values = 0
+        for num in numbers:
+            if is_ok_to_put_num(grid, i, j, num):
+                pos_values+=1
+                values.append(num)
+    return values
+
+def expand_state2(grid):
     children = []
     min_pos_values = 10
-    value = 1
+    min_values = []
     x = 0
     y = 0
     for i in range(9):
         for j in range(9):
             if grid[i][j] != '0':
                 continue
-            value, pos_values = heuristic1(grid, i,j) 
-            if  pos_values < min_pos_values:
-                min_pos_values = pos_values
+            values = heuristic1(grid, i, j) 
+            if  len(values) < min_pos_values:
+                min_values = values
+                min_pos_values = len(values)
                 x = i
                 y = j
 
-    child_grid = copy.deepcopy(grid)
-    child_grid[x][y] = value
     children = []
-    for i in range(9):
-        for j in range(9):
-            if child_grid[i][j] != '0':
-                continue
-            children.append((heuristic1(child_grid, i,j)[-1], child_grid ))
+    for value in min_values: 
+        child_grid = copy.deepcopy(grid)
+        child_grid[x][y] = value
+        children.append(child_grid)
     return children
 
 def solve_ucs(grid, n_to_be_filled):
@@ -140,22 +140,24 @@ def solve_astar(grid, n_to_be_filled):
     pass
 
 def solve_gbfs(grid, n_to_be_filled):
-    q = queue.PriorityQueue()
-    q.put((0, (grid, n_to_be_filled)))
+    pq = queue.PriorityQueue()
+    pq.put((n_to_be_filled, grid ))
+    visited_states = set()
     n_sts = 0
-    while not q.empty():
-        _, st = q.get()
+    while not pq.empty():
+        n_to_be_filled, grid = pq.get() 
         n_sts+=1
-        print(f"State {n_sts}")
-        print_grid(st[0])
-        if(st[-1] == 0):
-            print_grid(st[0])
-            return st[0]
-        children = expand_state2(st)
+        #print(f"State {n_sts}")
+        #print_grid(grid)
+        visited_states.add(str(grid))
+        if(n_to_be_filled == 0):
+            print("Solution found")
+            print(n_sts)
+            return grid
+        children = expand_state2(grid)
         for child in children:
-            #print(child)
-            q.put((child[0], (child[1], st[-1] - 1)))
-    
+            if(str(child) not in visited_states):
+                pq.put((n_to_be_filled -1 ,child))
 
 
 def solve(algorithm : str, lines: List[str]):
