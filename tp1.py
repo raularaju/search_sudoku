@@ -3,6 +3,8 @@ from typing import List
 import queue
 from tabulate import tabulate
 import copy
+import time
+
 list_algorithms: List[str] = ['B', 'I', 'U', 'A', 'G']
 
 quadrants = [
@@ -21,7 +23,6 @@ def usage(err_mes: str):
     raise Exception(err_mes)
 
 def print_grid(grid):
-    pass
     print(tabulate(grid, tablefmt="grid"))
 
 def is_ok_to_put_num(grid, x , y, num):
@@ -36,8 +37,7 @@ def is_ok_to_put_num(grid, x , y, num):
              return False
     return True
 
-def expand_state(state):
-    grid = state[0]
+def expand_state(grid):
     children = []
     for i in range(0, 9):
         for j in range(0, 9):
@@ -60,12 +60,11 @@ def solve_bfs(grid, n_to_be_filled):
     while not q.empty():
         st = q.get()
         n_sts+=1
-        print(f"State {n_sts}")
-        print_grid(st[0])
         if(st[-1] == 0):
             print("Solution found")
+            print(f"N states: {n_sts}")
             return st[0]
-        children = expand_state(st)
+        children = expand_state(st[0])
         for child in children:
             q.put((child, st[-1] - 1))
     if q.empty():
@@ -79,13 +78,12 @@ def solve_dfs(grid, n_to_be_filled, depth):
     while len(stack) > 0:
         st = stack.pop() 
         n_sts+=1
-        print(f"State {n_sts}")
-        print_grid(st[0])
         if(st[-1] == 0):
+            print(f"N states: {n_sts}")
             return st[0]
         if(st[1] >= depth):
             return None
-        children = expand_state(st)
+        children = expand_state(st[0])
         for child in children:
             stack.append((child, st[1] + 1, st[-1] - 1))
         
@@ -93,11 +91,27 @@ def solve_ids(grid, n_to_be_filled):
     depth = 1
     sol = solve_dfs(grid, n_to_be_filled, depth) 
     while sol == None:
-        print(f"Depth: {depth}")
         depth+=1
         sol = solve_dfs(grid, n_to_be_filled, depth)
     return sol
 
+def solve_ucs(grid, n_to_be_filled):
+    pq = queue.PriorityQueue()
+    pq.put((0, grid, n_to_be_filled))
+    n_sts = 0
+    while not pq.empty():
+        cost, grid, n_to_be_filled = pq.get()
+        n_sts +=1
+        if(n_to_be_filled == 0):
+            print("Solution found")
+            print_grid(grid)
+            print(f"N states: {n_sts}")
+            return grid
+        children = expand_state(grid)
+        for child in children:
+            pq.put((cost + 1, child, n_to_be_filled-1))
+
+        
 def heuristic1(grid, i, j):
     pos_values = 100
     values = []
@@ -133,9 +147,6 @@ def expand_state2(grid):
         children.append(child_grid)
     return children
 
-def solve_ucs(grid, n_to_be_filled):
-    pass
-
 def solve_astar(grid, n_to_be_filled):
     pass
 
@@ -152,7 +163,7 @@ def solve_gbfs(grid, n_to_be_filled):
         visited_states.add(str(grid))
         if(n_to_be_filled == 0):
             print("Solution found")
-            print(n_sts)
+            print(f"N states: {n_sts}")
             return grid
         children = expand_state2(grid)
         for child in children:
@@ -166,19 +177,21 @@ def solve(algorithm : str, lines: List[str]):
     for line in lines:
         n_to_be_filled += line.count('0')
         grid.append([char for char in line])
-    #print_grid(grid)
-    # res = is_ok_to_put_num(grid, 1, 0, '9')
-    # print(res)
+    start_time = time.perf_counter()
+    sol = []
     if(algorithm == 'B'):
-       solve_bfs(grid, n_to_be_filled)
+       sol = solve_bfs(grid, n_to_be_filled)
     if(algorithm == 'I'):
-        solve_ids(grid, n_to_be_filled)
+        sol = solve_ids(grid, n_to_be_filled)
     if(algorithm == 'U'):
-        solve_ucs(grid, n_to_be_filled)
+        sol = solve_ucs(grid, n_to_be_filled)
     if(algorithm == 'A'):
-        solve_astar(grid, n_to_be_filled)
+        sol = solve_astar(grid, n_to_be_filled)
     if(algorithm == 'G'):
-        solve_gbfs(grid, n_to_be_filled)
+        sol = solve_gbfs(grid, n_to_be_filled)
+    end_time = time.perf_counter()
+    exec_time = (end_time - start_time ) * 1000
+    print(f"Exec. time: {exec_time:.0f}")
 
 def main():
     if(len(sys.argv) - 1 != 10):
