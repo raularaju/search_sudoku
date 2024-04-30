@@ -112,20 +112,44 @@ def solve_ucs(grid, n_to_be_filled):
             pq.put((cost + 1, child, n_to_be_filled-1))
 
         
-def heuristic1(grid, i, j):
+def heuristic1(grid, x, y):
     pos_values = 100
     values = []
-    if grid[i][j] == '0':
+    if grid[x][y] == '0':
         pos_values = 0
         for num in numbers:
-            if is_ok_to_put_num(grid, i, j, num):
+            if is_ok_to_put_num(grid, x, y, num):
                 pos_values+=1
                 values.append(num)
-    return values
+    return len(values), values
 
-def expand_state2(grid):
+def heuristic2(grid, x, y):
+    pos_values_c = 9
+    pos_values_r = 9
+    pos_values_q = 9
+    values = []
+    for num in numbers:
+        is_ok_to_put = True
+        for i in range(9):
+             if grid[x][i] == num and i != y:
+                pos_values_c -= 1
+                is_ok_to_put = False
+             if grid[i][y] == num and i != x:
+                pos_values_r -= 1
+                is_ok_to_put = False
+        for index in quadrants[x // 3][y // 3]:
+              i, j = index
+              if i != x and j != y and grid[i][j] == num:
+                    pos_values_q -= 1
+                    is_ok_to_put = False
+        if is_ok_to_put:
+            values.append(num)
+    return pos_values_c + pos_values_r + pos_values_c, values 
+
+            
+def expand_state2(grid, heuristic):
     children = []
-    min_pos_values = 10
+    min_pos_values = 9 * 4
     min_values = []
     x = 0
     y = 0
@@ -133,8 +157,8 @@ def expand_state2(grid):
         for j in range(9):
             if grid[i][j] != '0':
                 continue
-            values = heuristic1(grid, i, j) 
-            if  len(values) < min_pos_values:
+            hn, values = heuristic(grid, i, j)
+            if  hn < min_pos_values:
                 min_values = values
                 min_pos_values = len(values)
                 x = i
@@ -148,7 +172,25 @@ def expand_state2(grid):
     return children
 
 def solve_astar(grid, n_to_be_filled):
-    pass
+    pq = queue.PriorityQueue()
+    pq.put((n_to_be_filled, grid ))
+    visited_states = set()
+    n_sts = 0
+    while not pq.empty():
+        n_to_be_filled, grid = pq.get() 
+        n_sts+=1
+        #print(f"State {n_sts}")
+        #print_grid(grid)
+        visited_states.add(str(grid))
+        if(n_to_be_filled == 0):
+            print(f"N states: {n_sts}")
+            return grid
+        children = expand_state2(grid, heuristic2)
+        for child in children:
+            if(str(child) not in visited_states):
+                pq.put((n_to_be_filled - 1 ,child))
+    print("Solution not found")
+
 
 def solve_gbfs(grid, n_to_be_filled):
     pq = queue.PriorityQueue()
@@ -162,14 +204,12 @@ def solve_gbfs(grid, n_to_be_filled):
         #print_grid(grid)
         visited_states.add(str(grid))
         if(n_to_be_filled == 0):
-            print("Solution found")
             print(f"N states: {n_sts}")
             return grid
-        children = expand_state2(grid)
+        children = expand_state2(grid, heuristic1)
         for child in children:
             if(str(child) not in visited_states):
                 pq.put((n_to_be_filled -1 ,child))
-
 
 def solve(algorithm : str, lines: List[str]):
     grid = []
@@ -177,7 +217,6 @@ def solve(algorithm : str, lines: List[str]):
     for line in lines:
         n_to_be_filled += line.count('0')
         grid.append([char for char in line])
-    start_time = time.perf_counter()
     sol = []
     if(algorithm == 'B'):
        sol = solve_bfs(grid, n_to_be_filled)
@@ -189,9 +228,6 @@ def solve(algorithm : str, lines: List[str]):
         sol = solve_astar(grid, n_to_be_filled)
     if(algorithm == 'G'):
         sol = solve_gbfs(grid, n_to_be_filled)
-    end_time = time.perf_counter()
-    exec_time = (end_time - start_time ) * 1000
-    print(f"Exec. time: {exec_time:.0f}")
 
 def main():
     if(len(sys.argv) - 1 != 10):
@@ -204,5 +240,9 @@ def main():
     lines : List[str] = sys.argv[2:]
     solve(algorithm, lines)
     
-if __name__ == "__main__":
+if __name__ == "__main__": 
+    start_time = time.perf_counter()
     main()
+    end_time = time.perf_counter()
+    exec_time = (end_time - start_time ) * 1000
+    print(f"Exec. time: {exec_time:.0f}")
