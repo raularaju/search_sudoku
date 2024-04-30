@@ -1,3 +1,4 @@
+from cgi import print_arguments
 import sys
 from typing import List
 import queue
@@ -34,78 +35,80 @@ def put_num(grid, r_used, c_used, q_used, x, y, num):
 def is_ok_to_put_num(r_used, c_used, q_used, x , y, num):
     return not r_used[x][int(num) - 1] and not c_used[y][int(num) - 1] and not q_used[(x//3) * 3 + (y//3)][int(num) - 1] 
 
-def expand_state(grid):
+def expand_state(grid, r_used, c_used, q_used):
     children = []
     for i in range(0, 9):
         for j in range(0, 9):
                 if (grid[i][j] == '0'):
                     for num in numbers:
-                        if is_ok_to_put_num(grid, i, j, num):
+                        if is_ok_to_put_num(r_used, c_used, q_used, i, j, num):
                             child_grid = copy.deepcopy(grid)
-                            child_grid[i][j] = num
-                            children.append(child_grid)
+                            child_r_used = copy.deepcopy(r_used)
+                            child_c_used = copy.deepcopy(c_used)
+                            child_q_used = copy.deepcopy(q_used)
+                            put_num(child_grid, child_r_used, child_c_used, child_q_used, i, j, num)
+                            children.append((child_grid, child_r_used, child_c_used, child_q_used))
                     return children
     return children
 
 def is_solution(st):
     pass
         
-def solve_bfs(grid, n_to_be_filled):
+def solve_bfs(grid, r_used, c_used, q_used, n_to_be_filled):
     q = queue.Queue()
-    q.put((grid, n_to_be_filled))
+    q.put((grid, r_used, c_used, q_used, n_to_be_filled))
     n_sts = 0
     while not q.empty():
-        st = q.get()
+        grid, r_used, c_used, q_used, n_to_be_filled = q.get()
         n_sts+=1
-        if(st[-1] == 0):
+        if(n_to_be_filled == 0):
             print("Solution found")
             print(f"N states: {n_sts}")
-            return st[0]
-        children = expand_state(st[0])
-        for child in children:
-            q.put((child, st[-1] - 1))
-    if q.empty():
-        raise Exception("BFS could not find any solution")
+            return grid
+        children = expand_state(grid,  r_used, c_used, q_used)
+        for child_grid, child_r_used, child_c_used, child_q_used in children:
+            q.put((child_grid, child_r_used, child_c_used, child_q_used, n_to_be_filled - 1))
 
 
-def solve_dfs(grid, n_to_be_filled, depth):
+def solve_dfs(grid, r_used, c_used, q_used, n_to_be_filled, max_depth):
     stack = []
-    stack.append((grid, 0, n_to_be_filled))
+    stack.append((grid, r_used, c_used, q_used, 0, n_to_be_filled))
     n_sts = 0
     while len(stack) > 0:
-        st = stack.pop() 
+        grid, r_used, c_used, q_used, curr_depth, n_to_be_filled = stack.pop() 
         n_sts+=1
-        if(st[-1] == 0):
+        if(n_to_be_filled == 0):
             print(f"N states: {n_sts}")
-            return st[0]
-        if(st[1] >= depth):
-            return None
-        children = expand_state(st[0])
-        for child in children:
-            stack.append((child, st[1] + 1, st[-1] - 1))
+            return grid
+        if(curr_depth >= max_depth):
+            continue
+        children = expand_state(grid,  r_used, c_used, q_used)
+        for child_grid, child_r_used, child_c_used, child_q_used in children:
+            stack.append((child_grid, child_r_used, child_c_used, child_q_used, curr_depth + 1, n_to_be_filled - 1))
+
         
-def solve_ids(grid, n_to_be_filled):
-    depth = 1
-    sol = solve_dfs(grid, n_to_be_filled, depth) 
+def solve_ids(grid, r_used, c_used, q_used, n_to_be_filled):
+    max_depth = 1
+    sol = solve_dfs(grid, r_used, c_used, q_used, n_to_be_filled, max_depth) 
     while sol == None:
-        depth+=1
-        sol = solve_dfs(grid, n_to_be_filled, depth)
+        max_depth+=1
+        sol = solve_dfs(grid, r_used, c_used, q_used, n_to_be_filled, max_depth)
     return sol
 
-def solve_ucs(grid, n_to_be_filled):
+def solve_ucs(grid, r_used, c_used, q_used, n_to_be_filled):
     pq = queue.PriorityQueue()
-    pq.put((0, grid, n_to_be_filled))
+    pq.put((0, grid, r_used, c_used, q_used, n_to_be_filled))
     n_sts = 0
     while not pq.empty():
-        cost, grid, n_to_be_filled = pq.get()
+        cost, grid, r_used, c_used, q_used, n_to_be_filled = pq.get()
         n_sts +=1
         if(n_to_be_filled == 0):
             print("Solution found")
             print(f"N states: {n_sts}")
             return grid
-        children = expand_state(grid)
-        for child in children:
-            pq.put((cost + 1, child, n_to_be_filled-1))
+        children = expand_state(grid,  r_used, c_used, q_used)
+        for child_grid, child_r_used, child_c_used, child_q_used in children:
+            pq.put((cost + 1, child_grid, child_r_used, child_c_used, child_q_used, n_to_be_filled - 1))
 
         
 def heuristic1(grid, r_used, c_used, q_used, x, y):
@@ -190,14 +193,13 @@ def solve_astar(grid, n_to_be_filled):
                 pq.put((n_to_be_filled - 1 ,child))
     print("Solution not found")
 
-
 def solve_gbfs(grid, r_used, c_used, q_used, n_to_be_filled):
-    pq = queue.PriorityQueue()
-    pq.put((n_to_be_filled, grid, r_used, c_used, q_used))
+    pq = [] # Prioriy queue is not necessary because all children would have same priority
+    pq.append((n_to_be_filled, grid, r_used, c_used, q_used))
     visited_states = set()
     n_sts = 0
-    while not pq.empty():
-        n_to_be_filled, grid, r_used, c_used, q_used  = pq.get() 
+    while len(pq) > 0:
+        n_to_be_filled, grid, r_used, c_used, q_used  = pq.pop() 
         n_sts+=1
         #print(f"State {n_sts}")
         #print_grid(grid)
@@ -208,7 +210,7 @@ def solve_gbfs(grid, r_used, c_used, q_used, n_to_be_filled):
         children = expand_state2(grid, r_used, c_used, q_used, heuristic1)
         for child_grid, child_r_used, child_c_used, child_q_used in children:
             if(str(child_grid) not in visited_states):
-                pq.put((n_to_be_filled -1 ,child_grid, child_r_used, child_c_used, child_q_used))
+                pq.append((n_to_be_filled -1 ,child_grid, child_r_used, child_c_used, child_q_used))
 
 def solve(algorithm : str, lines: List[str]):
     grid = []
@@ -225,6 +227,7 @@ def solve(algorithm : str, lines: List[str]):
                 c_used[j][int(lines[i][j]) - 1] = True
                 q_used[(i//3) * 3 + (j//3)][int(lines[i][j]) - 1] = True
     sol = []
+    
     if(algorithm == 'B'):
        sol = solve_bfs(grid, r_used, c_used, q_used, n_to_be_filled)
     if(algorithm == 'I'):
@@ -236,6 +239,7 @@ def solve(algorithm : str, lines: List[str]):
     if(algorithm == 'G'):
         sol = solve_gbfs(grid, r_used, c_used, q_used, n_to_be_filled)
     print(sol)
+
 def main():
     if(len(sys.argv) - 1 != 10):
         usage("Número de argumentos errado")
