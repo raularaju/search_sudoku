@@ -25,7 +25,6 @@ def usage(err_mes: str):
 def print_grid(grid):
     for line in grid:
         print("".join(line), end=" ")
-    # print(tabulate(grid, tablefmt="grid"))
 
 def put_num(grid, r_used, c_used, q_used, x, y, num):
     grid[x][y] = num
@@ -52,8 +51,6 @@ def expand_state(grid, r_used, c_used, q_used):
                     return children
     return children
 
-def is_solution(st):
-    pass
         
 def solve_bfs(grid, r_used, c_used, q_used, n_to_be_filled):
     q = queue.Queue()
@@ -183,15 +180,13 @@ def solve_astar(grid,r_used, c_used, q_used, n_to_be_filled):
     while not pq.empty():
         fn, n_to_be_filled, grid, r_used, c_used, q_used  = pq.get()
         n_sts+=1
-        #print(f"State {n_sts}")
-        #print_grid(grid)
         visited_states.add(str(grid))
         if(n_to_be_filled == 0):
             break
         children = expand_state2(grid, r_used, c_used, q_used, heuristic1)
         for min_pos_values, child_grid, child_r_used, child_c_used, child_q_used in children:
             if(str(child_grid) not in visited_states):
-                pq.put((initial_n_to_be_filled - n_to_be_filled + 1 + min_pos_values, n_to_be_filled - 1 ,child_grid, child_r_used, child_c_used, child_q_used))  
+                pq.put((initial_n_to_be_filled - n_to_be_filled + 1 + min_pos_values, n_to_be_filled - 1, child_grid, child_r_used, child_c_used, child_q_used))  
     
     if n_to_be_filled > 0:
         return n_sts, None
@@ -208,8 +203,6 @@ def solve_gbfs(grid, r_used, c_used, q_used, n_to_be_filled):
     while not pq.empty():
         n_to_be_filled, grid, r_used, c_used, q_used  = pq.get() 
         n_sts+=1
-        #print(f"State {n_sts}")
-        #print_grid(grid)
         visited_states.add(str(grid))
         if(n_to_be_filled == 0):
             break
